@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐍 Snake Detector — Test UI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    header h1 { font-size: 2rem; color: #4ade80; letter-spacing: -0.5px; }
+    header p  { color: #94a3b8; margin-top: 6px; font-size: 0.95rem; }
+
+    /* Upload card */
+    .upload-card {
+      background: #111827;
+      border: 2px dashed #334155;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      transition: border-color .2s, background .2s;
+      cursor: pointer;
+    }
+    .upload-card:hover, .upload-card.drag { border-color: #4ade80; background: #0d1f12; }
+
+    .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+    .upload-card h2 { font-size: 1.1rem; margin-bottom: 6px; }
+    .upload-card p  { color: #64748b; font-size: 0.85rem; }
+
+    #fileInput { display: none; }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-green:hover { opacity: .85; }
+    .btn-outline { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-outline:hover { border-color: #64748b; color: #e2e8f0; }
+
+    .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+
+    /* Preview */
+    #preview {
+      display: none;
+      margin-top: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      text-align: center;
+    }
+    #preview img {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 12px;
+      border: 2px solid #1e293b;
+    }
+    #preview p { color: #64748b; font-size: 0.8rem; margin-top: 6px; }
+
+    /* Loading */
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 32px;
+    }
+    .spinner-ring {
+      width: 48px; height: 48px;
+      border: 4px solid #1e293b;
+      border-top-color: #4ade80;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner p { color: #64748b; font-size: 0.9rem; }
+
+    /* Result card */
+    .result-card {
+      display: none;
+      background: #111827;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 24px;
+    }
+
+    .result-banner {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .banner-venomous     { background: linear-gradient(135deg, #7f1d1d, #991b1b); }
+    .banner-safe         { background: linear-gradient(135deg, #14532d, #166534); }
+    .banner-uncertain    { background: linear-gradient(135deg, #78350f, #92400e); }
+
+    .banner-icon  { font-size: 2.4rem; }
+    .banner-title { font-size: 1.3rem; font-weight: 700; }
+    .banner-sub   { font-size: 0.85rem; opacity: .8; margin-top: 2px; }
+
+    .result-body { padding: 20px 24px; }
+
+    /* Confidence bar */
+    .conf-section { margin-bottom: 20px; }
+    .conf-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .conf-bar {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .conf-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+    .fill-high   { background: #4ade80; }
+    .fill-medium { background: #fbbf24; }
+    .fill-low    { background: #f87171; }
+
+    .threshold-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-top: 6px;
+    }
+    .badge-pass { background: #14532d; color: #4ade80; }
+    .badge-fail { background: #78350f; color: #fbbf24; }
+
+    /* Warning box */
+    .warning-box {
+      background: #1c1207;
+      border: 1px solid #92400e;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    /* Species info */
+    .species-card {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .species-name     { font-size: 1.2rem; font-weight: 700; color: #f1f5f9; }
+    .species-sci      { font-style: italic; color: #64748b; font-size: 0.85rem; margin: 2px 0 10px; }
+    .species-desc     { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; }
+    .species-fun-fact {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #1e293b;
+      border-left: 3px solid #4ade80;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+
+    /* Meta row */
+    .meta-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .meta-pill {
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: #1e293b;
+      color: #94a3b8;
+    }
+    .pill-risk-high   { background: #7f1d1d; color: #fca5a5; }
+    .pill-risk-medium { background: #78350f; color: #fcd34d; }
+    .pill-risk-low    { background: #14532d; color: #86efac; }
+
+    /* Actions */
+    .actions-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin: 16px 0 8px;
+    }
+    .action-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .action-item:last-child { border-bottom: none; }
+    .action-num {
+      min-width: 22px;
+      height: 22px;
+      background: #1e293b;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      margin-top: 1px;
+    }
+
+    /* Top 3 */
+    .top3-title {
+      font-size: 0.8rem;
+      color: #475569;
+      margin: 16px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .top3-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 0.85rem;
+    }
+    .top3-name  { flex: 1; color: #94a3b8; }
+    .top3-pct   { color: #64748b; font-size: 0.8rem; width: 44px; text-align: right; }
+    .top3-bar-bg { flex: 2; height: 4px; background: #1e293b; border-radius: 2px; }
+    .top3-bar-fill { height: 100%; border-radius: 2px; background: #4ade80; }
+
+    /* Footer meta */
+    .result-footer {
+      padding: 12px 24px;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .result-footer span { font-size: 0.75rem; color: #475569; }
+
+    /* Error */
+    .error-box {
+      background: #1c0707;
+      border: 1px solid #7f1d1d;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 20px;
+      display: none;
+    }
+    .error-box h3 { color: #f87171; margin-bottom: 6px; }
+    .error-box p  { color: #94a3b8; font-size: 0.9rem; }
+
+    /* API status */
+    #status-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    #status-dot.online  { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    #status-dot.offline { background: #f87171; }
+    #status-text { font-size: 0.8rem; color: #64748b; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <h1>🐍 Snake Detector</h1>
+    <p>Upload foto ular → deteksi berbisa / tidak berbisa dengan AI</p>
+    <div style="margin-top:10px">
+      <span id="status-dot"></span>
+      <span id="status-text">Mengecek koneksi API...</span>
+    </div>
+  </header>
+
+  <!-- Upload area -->
+  <div class="upload-card" id="dropzone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📸</div>
+    <h2>Klik atau drag foto ular di sini</h2>
+    <p>Format: JPG, PNG, WEBP &nbsp;·&nbsp; Maks 10MB</p>
+    <input type="file" id="fileInput" accept="image/*" />
+  </div>
+
+  <div id="preview">
+    <img id="previewImg" src="" alt="Preview" />
+    <p id="previewMeta"></p>
+  </div>
+
+  <div class="btn-row" id="btnRow" style="display:none">
+    <button class="btn btn-green" onclick="runDetection()">🔍 Deteksi Sekarang</button>
+    <button class="btn btn-outline" onclick="resetAll()">✕ Reset</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="spinner" id="spinner">
+    <div class="spinner-ring"></div>
+    <p>Menganalisis gambar dengan AI...</p>
+    <p style="margin-top:4px;font-size:0.8rem;color:#334155">Biasanya 2-5 detik</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox">
+    <h3>❌ Terjadi Kesalahan</h3>
+    <p id="errorMsg"></p>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="result-banner" id="resultBanner">
+      <div class="banner-icon" id="bannerIcon"></div>
+      <div>
+        <div class="banner-title" id="bannerTitle"></div>
+        <div class="banner-sub"   id="bannerSub"></div>
+      </div>
+    </div>
+
+    <div class="result-body">
+
+      <!-- Confidence -->
+      <div class="conf-section">
+        <div class="conf-label">
+          <span>Tingkat Keyakinan AI</span>
+          <span id="confPct"></span>
+        </div>
+        <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+        <span class="threshold-badge" id="threshBadge"></span>
+      </div>
+
+      <!-- Warning -->
+      <div class="warning-box" id="warningBox" style="display:none"></div>
+
+      <!-- Message -->
+      <p id="resultMsg" style="font-size:0.9rem;color:#94a3b8;margin-bottom:16px;line-height:1.5"></p>
+
+      <!-- Species -->
+      <div id="speciesSection" style="display:none">
+        <div class="species-card">
+          <div class="species-name" id="speciesName"></div>
+          <div class="species-sci"  id="speciesSci"></div>
+          <div class="species-desc" id="speciesDesc"></div>
+          <div class="meta-row">
+            <span class="meta-pill" id="pillHabitat"></span>
+            <span class="meta-pill" id="pillDist"></span>
+            <span class="meta-pill" id="pillRisk"></span>
+          </div>
+          <div class="species-fun-fact" id="funFact" style="display:none"></div>
+        </div>
+
+        <div class="actions-title">⚡ Saran Tindakan</div>
+        <div id="actionsList"></div>
+      </div>
+
+      <!-- Top 3 candidates -->
+      <div class="top3-title">Top 3 Kandidat Prediksi</div>
+      <div id="top3List"></div>
+
+    </div>
+
+    <div class="result-footer">
+      <span id="footerPredId"></span>
+      <span id="footerTime"></span>
+      <span id="footerModel"></span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API = 'http://localhost:8000/api/v1';
+  let selectedFile = null;
+
+  // ── API Status ──────────────────────────────────
+  async function checkStatus() {
+    try {
+      const r = await fetch(`${API}/health`);
+      const d = await r.json();
+      const dot  = document.getElementById('status-dot');
+      const txt  = document.getElementById('status-text');
+      if (d.model_loaded) {
+        dot.className = 'online';
+        txt.textContent = `API Online · Model: ${d.model_version}`;
+      } else {
+        dot.className = '';
+        txt.textContent = 'Model sedang loading...';
+        setTimeout(checkStatus, 3000);
+      }
+    } catch {
+      document.getElementById('status-dot').className = 'offline';
+      document.getElementById('status-text').textContent = 'API Offline — pastikan server jalan';
+    }
+  }
+  checkStatus();
+
+  // ── File input ──────────────────────────────────
+  const fileInput = document.getElementById('fileInput');
+  const dropzone  = document.getElementById('dropzone');
+
+  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  function handleFile(file) {
+    if (!file) return;
+    const allowedTypes = ['image/jpeg','image/png','image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Format tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError('File terlalu besar. Maksimal 10MB.');
+      return;
+    }
+
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img  = document.getElementById('previewImg');
+      const meta = document.getElementById('previewMeta');
+      img.src  = e.target.result;
+      meta.textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+      document.getElementById('preview').style.display = 'block';
+      document.getElementById('btnRow').style.display  = 'flex';
+      document.getElementById('resultCard').style.display = 'none';
+      document.getElementById('errorBox').style.display  = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Detection ───────────────────────────────────
+  async function runDetection() {
+    if (!selectedFile) return;
+
+    document.getElementById('spinner').style.display    = 'block';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('errorBox').style.display   = 'none';
+    document.getElementById('btnRow').style.display     = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`${API}/detect`, { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || `HTTP ${res.status}`);
+      }
+
+      renderResult(data);
+    } catch (err) {
+      showError(`Gagal terhubung ke API: ${err.message}. Pastikan server sudah jalan.`);
+    } finally {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('btnRow').style.display  = 'flex';
+    }
+  }
+
+  // ── Render result ───────────────────────────────
+  function renderResult(d) {
+    const card   = document.getElementById('resultCard');
+    const banner = document.getElementById('resultBanner');
+
+    // Banner
+    const status = d.venom_status;
+    if (status === 'BERBISA') {
+      banner.className  = 'result-banner banner-venomous';
+      document.getElementById('bannerIcon').textContent  = '☠️';
+      document.getElementById('bannerTitle').textContent = 'BERBISA';
+    } else if (status === 'TIDAK BERBISA') {
+      banner.className  = 'result-banner banner-safe';
+      document.getElementById('bannerIcon').textContent  = '✅';
+      document.getElementById('bannerTitle').textContent = 'TIDAK BERBISA';
+    } else {
+      banner.className  = 'result-banner banner-uncertain';
+      document.getElementById('bannerIcon').textContent  = '⚠️';
+      document.getElementById('bannerTitle').textContent = 'TIDAK DAPAT DIPASTIKAN';
+    }
+    document.getElementById('bannerSub').textContent = d.message;
+
+    // Confidence
+    const pct  = Math.round(d.confidence * 100);
+    document.getElementById('confPct').textContent  = d.confidence_pct;
+    const fill = document.getElementById('confFill');
+    fill.style.width = pct + '%';
+    fill.className   = 'conf-fill ' + (pct >= 70 ? 'fill-high' : pct >= 40 ? 'fill-medium' : 'fill-low');
+
+    const badge = document.getElementById('threshBadge');
+    if (d.threshold_passed) {
+      badge.className   = 'threshold-badge badge-pass';
+      badge.textContent = '✓ Melewati threshold 70%';
+    } else {
+      badge.className   = 'threshold-badge badge-fail';
+      badge.textContent = '✗ Di bawah threshold 70%';
+    }
+
+    // Warning
+    const warnBox = document.getElementById('warningBox');
+    if (d.warning) {
+      warnBox.textContent    = d.warning;
+      warnBox.style.display  = 'block';
+    } else {
+      warnBox.style.display  = 'none';
+    }
+
+    // Message (short)
+    document.getElementById('resultMsg').textContent = '';
+
+    // Species
+    const specSec = document.getElementById('speciesSection');
+    if (d.species) {
+      const sp = d.species;
+      document.getElementById('speciesName').textContent = sp.common_name;
+      document.getElementById('speciesSci').textContent  = sp.scientific_name;
+      document.getElementById('speciesDesc').textContent = sp.description;
+
+      // Risk pill
+      const riskPill = document.getElementById('pillRisk');
+      const riskCls  = sp.risk_level === 'TINGGI' ? 'pill-risk-high'
+                      : sp.risk_level === 'SEDANG' ? 'pill-risk-medium' : 'pill-risk-low';
+      riskPill.className   = 'meta-pill ' + riskCls;
+      riskPill.textContent = '⚠ Risiko ' + sp.risk_level;
+
+      document.getElementById('pillHabitat').textContent = '🌿 ' + sp.habitat;
+      document.getElementById('pillDist').textContent    = '📍 ' + sp.distribution;
+
+      // Fun fact
+      const ff = document.getElementById('funFact');
+      if (sp.fun_fact) {
+        ff.textContent   = '💡 ' + sp.fun_fact;
+        ff.style.display = 'block';
+      } else {
+        ff.style.display = 'none';
+      }
+
+      // Actions
+      const actList = document.getElementById('actionsList');
+      actList.innerHTML = sp.actions.map((a, i) =>
+        `<div class="action-item">
+          <span class="action-num">${i+1}</span>
+          <span>${a}</span>
+        </div>`
+      ).join('');
+
+      specSec.style.display = 'block';
+    } else {
+      specSec.style.display = 'none';
+    }
+
+    // Top 3
+    const top3 = document.getElementById('top3List');
+    top3.innerHTML = (d.top_predictions || []).map((p, i) => {
+      const pctVal = Math.round(p.confidence * 100);
+      return `<div class="top3-item">
+        <span style="color:#475569;font-size:0.8rem;width:16px">${i+1}</span>
+        <span class="top3-name">${p.class.replace(/_/g,' ')}</span>
+        <div class="top3-bar-bg"><div class="top3-bar-fill" style="width:${pctVal}%"></div></div>
+        <span class="top3-pct">${pctVal}%</span>
+      </div>`;
+    }).join('');
+
+    // Footer
+    document.getElementById('footerPredId').textContent  = `ID: ${d.prediction_id.split('-')[0]}...`;
+    document.getElementById('footerTime').textContent    = `⚡ ${d.inference_time_ms}ms`;
+    document.getElementById('footerModel').textContent   = `Model: ${d.model_version}`;
+
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Helpers ─────────────────────────────────────
+  function showError(msg) {
+    document.getElementById('errorMsg').textContent   = msg;
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('spinner').style.display  = 'none';
+    document.getElementById('btnRow').style.display   = 'flex';
+  }
+
+  function resetAll() {
+    selectedFile = null;
+    document.getElementById('fileInput').value          = '';
+    document.getElementById('preview').style.display    = 'none';
+    document.getElementById('btnRow').style.display     = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('errorBox').style.display   = 'none';
+    document.getElementById('previewImg').src           = '';
+  }
+</script>
+</body>
+</html>
